@@ -18,10 +18,25 @@
 # 装两个 systemd 服务：sing-box-vmess8443、cloudflared-8443。不动系统里其他服务与配置。
 set -euo pipefail
 
-TUNNEL_MODE="${TUNNEL_MODE:-}"
-TUNNEL_TOKEN="${TUNNEL_TOKEN:-}"
-VMESS_UUID="${VMESS_UUID:-}"
-WS_PATH="${WS_PATH:-}"
+# ---------- 参数清洗：先去掉复制粘贴混入的首尾空白，再补默认值 ----------
+trim_ws() {
+  local s="$1"
+  s="${s//　/ }"                    # 全角空格 → 空格
+  s="${s// / }"                     # 不间断空格(U+00A0) → 空格
+  s="${s#"${s%%[![:space:]]*}"}"    # 去开头空白（空格/Tab/回车/换行）
+  s="${s%"${s##*[![:space:]]}"}"    # 去结尾空白
+  printf '%s' "$s"
+}
+TUNNEL_MODE=$(trim_ws "${TUNNEL_MODE:-}")
+TUNNEL_TOKEN=$(trim_ws "${TUNNEL_TOKEN:-}")
+VMESS_UUID=$(trim_ws "${VMESS_UUID:-}")
+WS_PATH=$(trim_ws "${WS_PATH:-}")
+LOCAL_PORT=$(trim_ws "${LOCAL_PORT:-18001}")
+TUNNEL_HOST=$(trim_ws "${TUNNEL_HOST:-}")
+EDGE_ADDR=$(trim_ws "${EDGE_ADDR:-}")
+EDGE_PORT=$(trim_ws "${EDGE_PORT:-8443}")
+NODE_NAME=$(trim_ws "${NODE_NAME:-}")
+CF_API_TOKEN=$(trim_ws "${CF_API_TOKEN:-}")
 LOCAL_PORT="${LOCAL_PORT:-18001}"
 TUNNEL_HOST="${TUNNEL_HOST:-vmess251.fengco.tech}"
 EDGE_ADDR="${EDGE_ADDR:-cf.877774.xyz}"
