@@ -14,15 +14,19 @@
 在目标机器上以 root 运行（一整段粘贴）：
 
 ```bash
-# 固定隧道（默认）
+# 固定隧道（默认）：只需 token 和隧道域名，UUID / WS 路径自动生成
 curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
-TUNNEL_TOKEN='你的隧道token' TUNNEL_HOST='你的隧道域名' VMESS_UUID='你的UUID' WS_PATH='/vmess-你的路径' \
+TUNNEL_TOKEN='你的隧道token' TUNNEL_HOST='你的隧道域名' \
 bash /tmp/vmess8443-install.sh
 
 # 随机隧道（免 token）
 curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
 TUNNEL_MODE=quick bash /tmp/vmess8443-install.sh
 ```
+
+UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmess8443/params.env`，
+重跑脚本自动复用（链接不变）。部署完链接直接打印在最后，也存在
+`/root/vmess8443-link.txt`。想用指定的 UUID/路径才需要加 `VMESS_UUID='...' WS_PATH='/vmess-xxx'`。
 
 `TUNNEL_HOST` 是固定隧道的域名（就是你建隧道时 Public Hostname 里的那个完整域名，
 如 `vmess251.fengco.tech`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
