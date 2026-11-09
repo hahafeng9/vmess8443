@@ -38,6 +38,7 @@ UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmes
 | --- | --- |
 | `TUNNEL_MODE` | `fixed`（固定隧道，默认）/ `quick`（随机隧道）。重跑时省略则复用上次模式。 |
 | `TUNNEL_TOKEN` | 固定隧道的 token（仅 fixed 需要）。没给时脚本会在终端提示粘贴（或读上次保存的）。 |
+| `CF_API_TOKEN` | 可选。Cloudflare API Token（需 `Zone.Zone 读取` + `Zone.DNS 编辑` 权限）。给了就自动做 DNS 自愈：清理同名旧隧道记录并把域名 CNAME 对准本隧道，杜绝 530/1033。不给则只在探测到 1033 时打印手工修复步骤。 |
 | `VMESS_UUID` | 节点 UUID。没给随机生成。 |
 | `WS_PATH` | WebSocket 路径。没给随机生成。 |
 | `LOCAL_PORT` | 本机监听端口，默认 `18001`（只绑 127.0.0.1）。 |
