@@ -6,8 +6,10 @@
 #   （免 token，但 cloudflared 重启后域名会变；重跑本脚本可刷新链接且不会重启在跑的隧道）
 #
 # 用法（root 运行）：
-#   固定: TUNNEL_TOKEN='隧道token' VMESS_UUID='uuid' WS_PATH='/vmess-xxxx' bash install.sh
+#   固定: TUNNEL_TOKEN='隧道token' TUNNEL_HOST='隧道域名' VMESS_UUID='uuid' WS_PATH='/vmess-xxxx' bash install.sh
 #   随机: TUNNEL_MODE=quick bash install.sh
+# TUNNEL_HOST 是你建固定隧道时 Public Hostname 的完整域名（默认 vmess251.fengco.tech），
+# 会写进 VMess 链接的 Host/SNI，必须和 Cloudflare 面板里配的一致。
 # 参数都可省略：token 没给会在终端里提示粘贴；UUID/路径没给会随机生成并保存，
 # 重跑脚本时自动复用同一套参数与上次模式（幂等）。
 #
