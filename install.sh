@@ -297,7 +297,24 @@ for _ in $(seq 1 24); do
 done
 if [ -z "$ok" ]; then
   journalctl -u cloudflared-8443 -n 20 --no-pager || true
-  log "警告：公网握手暂未通（隧道注册或 DNS 生效可能还要一会儿），节点链接先照常输出"
+  # 识别 Cloudflare 边缘错误码，给针对性提示（边缘 5xx 响应体带 "error code: 10xx"）
+  CF_ERR=$(curl -s --max-time 8 "https://$PUB_HOST$WS_PATH" 2>/dev/null | grep -oE 'error code: [0-9]+' | head -1) || CF_ERR=""
+  case "$CF_ERR" in
+    *"1033"*)
+      log "警告：公网 530/1033 —— 域名 $PUB_HOST 的 DNS 记录没有指向本隧道（多为同名旧记录残留），本机隧道本身是通的。"
+      log "  修复：CF 面板 → 域名 → DNS → 记录 → 编辑 $PUB_HOST 的 CNAME，内容改为 <本隧道ID>.cfargotunnel.com；"
+      log "  或删掉旧记录后到 Zero Trust → Tunnels → Public Hostname 重新保存一次让其自动重建。"
+      ;;
+    *"1001"*)
+      log "警告：公网 530/1001 —— $PUB_HOST 在 DNS 里没有记录。到 Zero Trust → Tunnels → Public Hostname 重新保存一次让其自动创建。"
+      ;;
+    "")
+      log "警告：公网握手暂未通（隧道注册或 DNS 生效可能还要一会儿），节点链接先照常输出"
+      ;;
+    *)
+      log "警告：公网握手暂未通（Cloudflare 边缘返回 $CF_ERR），节点链接先照常输出"
+      ;;
+  esac
 fi
 
 if [ "$TUNNEL_MODE" = "fixed" ]; then
