@@ -111,6 +111,67 @@ if [ "$TUNNEL_MODE" = "fixed" ]; then
   chmod 600 "$CF_DIR/token"
 fi
 
+# 从 token 解出本隧道 ID（DNS 自愈与诊断提示用）
+TUNNEL_ID=""
+if [ "$TUNNEL_MODE" = "fixed" ]; then
+  TUNNEL_ID=$(printf '%s' "$TUNNEL_TOKEN" | base64 -d 2>/dev/null | grep -oE '"t":"[0-9a-f-]{36}"' | cut -d'"' -f4) || TUNNEL_ID=""
+fi
+
+# ---------- DNS 自愈（可选）：安装命令带 CF_API_TOKEN 时自动清理同名旧记录并指到本隧道 ----------
+# 背景：同名旧隧道记录（旧"隧道"记录 / 手工 CNAME）会挡住 Public Hostname 的 DNS 自动创建，
+# 导致边缘把流量路由进旧隧道而报 530/1033。有 token 就自动对齐，没有则只在出问题时打印手工修复指引。
+# CF_API_TOKEN 需要：Zone.Zone 读取 + Zone.DNS 编辑 权限。
+if [ "$TUNNEL_MODE" = "fixed" ] && [ -n "$TUNNEL_ID" ] && [ -n "${CF_API_TOKEN:-}" ]; then
+  ZONE_NAME="${TUNNEL_HOST#*.}"
+  log "DNS 自愈：检查 $ZONE_NAME 里 $TUNNEL_HOST 指向是否为本隧道 $TUNNEL_ID …"
+  CF_API_TOKEN="${CF_API_TOKEN}" python3 - "$ZONE_NAME" "$TUNNEL_HOST" "$TUNNEL_ID" <<'PYDNS' || log "警告：DNS 自愈失败（见上方输出），可按提示手动修复后重跑本脚本"
+import json, os, sys, urllib.request, urllib.parse
+zone_name, hostname, tunnel_id = sys.argv[1], sys.argv[2], sys.argv[3]
+token = os.environ["CF_API_TOKEN"]
+BASE = "https://api.cloudflare.com/client/v4"
+
+def api(method, path, data=None):
+    req = urllib.request.Request(
+        BASE + path, method=method,
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        data=json.dumps(data).encode() if data is not None else None)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.load(r)
+
+try:
+    z = api("GET", "/zones?name=" + urllib.parse.quote(zone_name))
+    if not z.get("success") or not z.get("result"):
+        print("  找不到 zone " + zone_name + "（token 无效、权限不足或域名不在本账号）")
+        sys.exit(1)
+    zid = z["result"][0]["id"]
+    target = tunnel_id + ".cfargotunnel.com"
+    recs = api("GET", "/zones/" + zid + "/dns_records?name=" + urllib.parse.quote(hostname) + "&per_page=100")
+    if not recs.get("success"):
+        print("  拉取 DNS 记录失败: " + json.dumps(recs.get("errors", [])[:1]))
+        sys.exit(1)
+    good = False
+    for r in recs["result"]:
+        if r.get("type") == "CNAME" and r.get("content") == target:
+            good = True
+            if not r.get("proxied"):
+                api("PATCH", "/zones/" + zid + "/dns_records/" + r["id"], {"proxied": True})
+                print("  已为正确记录开启橙云代理")
+        else:
+            api("DELETE", "/zones/" + zid + "/dns_records/" + r["id"])
+            print("  已删除同名旧记录: " + r.get("type", "?") + " " + str(r.get("content", "?"))[:70])
+    if not good:
+        api("POST", "/zones/" + zid + "/dns_records",
+            {"type": "CNAME", "name": hostname, "content": target, "proxied": True, "comment": "vmess8443 auto"})
+        print("  已创建: " + hostname + " -> " + target + "（已代理）")
+    else:
+        print("  记录已正确指向本隧道: " + hostname + " -> " + target)
+    print("  DNS 自愈完成")
+except Exception as e:
+    print("  API 错误: " + str(e))
+    sys.exit(1)
+PYDNS
+fi
+
 cat > "$PARAMS_FILE" <<EOF
 SAVED_UUID="$VMESS_UUID"
 SAVED_WS_PATH="$WS_PATH"
@@ -302,8 +363,10 @@ if [ -z "$ok" ]; then
   case "$CF_ERR" in
     *"1033"*)
       log "警告：公网 530/1033 —— 域名 $PUB_HOST 的 DNS 记录没有指向本隧道（多为同名旧记录残留），本机隧道本身是通的。"
-      log "  修复：CF 面板 → 域名 → DNS → 记录 → 编辑 $PUB_HOST 的 CNAME，内容改为 <本隧道ID>.cfargotunnel.com；"
-      log "  或删掉旧记录后到 Zero Trust → Tunnels → Public Hostname 重新保存一次让其自动重建。"
+      log "  本隧道 ID: ${TUNNEL_ID:-（token 解析失败，去 CF 面板 Tunnels 列表查看）}"
+      log "  修复①：CF 面板 → 域名 → DNS → 记录 → 删掉 $PUB_HOST 的其他同名记录，把 CNAME 内容改为 ${TUNNEL_ID:-<本隧道ID>}.cfargotunnel.com（橙云开启）"
+      log "  修复②：或删旧记录后到 Zero Trust → Tunnels → 本隧道 → Public Hostname 重新保存一次让其自动重建"
+      log "  下次安装命令带 CF_API_TOKEN='...'（需 Zone.DNS 编辑权限）即可让脚本自动修复"
       ;;
     *"1001"*)
       log "警告：公网 530/1001 —— $PUB_HOST 在 DNS 里没有记录。到 Zero Trust → Tunnels → Public Hostname 重新保存一次让其自动创建。"
