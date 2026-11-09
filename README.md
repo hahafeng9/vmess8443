@@ -4,7 +4,7 @@
 支持两种隧道模式，用 `TUNNEL_MODE` 选择：
 
 - `fixed`（默认）**固定隧道**：需要隧道 token，域名固定。
-  链路：客户端 → 优选域名 `cf.877774.xyz:8443` → 固定隧道 `vmess251.fengco.tech`
+  链路：客户端 → 优选入口（`EDGE_ADDR:8443`）→ 固定隧道域名（`TUNNEL_HOST`）
   → 本机 `127.0.0.1:18001`（sing-box VMess+WS）
 - `quick` **随机隧道**：免 token，cloudflared 自动注册临时域名 `xxx.trycloudflare.com:443`。
   注意：cloudflared 重启（含重启机器）后域名会变，旧链接失效；重跑本脚本可刷新链接。
@@ -29,8 +29,8 @@ UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmes
 `/root/vmess8443-link.txt`。想用指定的 UUID/路径才需要加 `VMESS_UUID='...' WS_PATH='/vmess-xxx'`。
 
 `TUNNEL_HOST` 是固定隧道的域名（就是你建隧道时 Public Hostname 里的那个完整域名，
-如 `vmess251.fengco.tech`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
-链接的 Host/SNI。不传的话默认用 `vmess251.fengco.tech`。
+如 `tunnel.example.com`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
+链接的 Host/SNI。建议安装时总是显式传入。
 
 参数（都可省略）：
 
@@ -42,8 +42,8 @@ UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmes
 | `VMESS_UUID` | 节点 UUID。没给随机生成。 |
 | `WS_PATH` | WebSocket 路径。没给随机生成。 |
 | `LOCAL_PORT` | 本机监听端口，默认 `18001`（只绑 127.0.0.1）。 |
-| `TUNNEL_HOST` | 固定隧道的隧道域名，默认 `vmess251.fengco.tech`（仅 fixed）。 |
-| `EDGE_ADDR` / `EDGE_PORT` | 固定隧道客户端连接地址/端口，默认 `cf.877774.xyz` / `8443`（仅 fixed）。 |
+| `TUNNEL_HOST` | 固定隧道的隧道域名（仅 fixed）。建议显式传入，需与 CF 面板 Public Hostname 一致。 |
+| `EDGE_ADDR` / `EDGE_PORT` | 固定隧道客户端连接的优选入口地址/端口（仅 fixed），按你的优选资源填写。 |
 
 UUID、路径、隧道模式会存到 `/etc/vmess8443/params.env`，重跑脚本自动复用；随机隧道的
 当前域名存 `/etc/vmess8443/quick-domain.txt`。所有参数会先做合法性校验（UUID 格式、
@@ -68,14 +68,13 @@ WS_PATH 字符集、端口范围等），不合法直接报错退出，避免特
 ## 前置条件（隧道侧，脚本之外）
 
 - fixed：固定隧道需先在 Cloudflare 建好（远程管理型），且 ingress 指向
-  `http://127.0.0.1:18001`、DNS 有对应 CNAME。本仓库配套的隧道：`vmess251.fengco.tech`。
+  `http://127.0.0.1:18001`、DNS 有对应 CNAME。
 - quick：无需任何 Cloudflare 侧配置，但出口要能连上 Cloudflare 边缘。
 
 ## 卸载
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
-bash /tmp/vmess8443-install.sh --uninstall
+curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && bash /tmp/vmess8443-install.sh --uninstall
 ```
 
 会停掉并删除 `sing-box-vmess8443`、`cloudflared-8443` 两个服务和 `/etc/vmess8443/`、
