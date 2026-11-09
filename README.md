@@ -16,13 +16,17 @@
 ```bash
 # 固定隧道（默认）
 curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
-TUNNEL_TOKEN='你的隧道token' VMESS_UUID='你的UUID' WS_PATH='/vmess-你的路径' \
+TUNNEL_TOKEN='你的隧道token' TUNNEL_HOST='你的隧道域名' VMESS_UUID='你的UUID' WS_PATH='/vmess-你的路径' \
 bash /tmp/vmess8443-install.sh
 
 # 随机隧道（免 token）
 curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
 TUNNEL_MODE=quick bash /tmp/vmess8443-install.sh
 ```
+
+`TUNNEL_HOST` 是固定隧道的域名（就是你建隧道时 Public Hostname 里的那个完整域名，
+如 `vmess251.fengco.tech`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
+链接的 Host/SNI。不传的话默认用 `vmess251.fengco.tech`。
 
 参数（都可省略）：
 
