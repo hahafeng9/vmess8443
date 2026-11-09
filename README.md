@@ -4,33 +4,33 @@
 支持两种隧道模式，用 `TUNNEL_MODE` 选择：
 
 - `fixed`（默认）**固定隧道**：需要隧道 token，域名固定。
-  链路：客户端 → 优选域名 `cf.877774.xyz:8443` → 固定隧道 `vmess251.ccc.tech`
+  链路：客户端 → 优选域名 `cf.877774.xyz:8443` → 固定隧道 `vmess251.fengco.tech`
   → 本机 `127.0.0.1:18001`（sing-box VMess+WS）
 - `quick` **随机隧道**：免 token，cloudflared 自动注册临时域名 `xxx.trycloudflare.com:443`。
   注意：cloudflared 重启（含重启机器）后域名会变，旧链接失效；重跑本脚本可刷新链接。
 
 ## 用法
 
-在目标机器上以 root 运行（一整段粘贴）：
+在目标机器上以 root 运行。**命令是单行的**（不要手动加 `\` 换行再粘贴，
+换行符丢了会把变量名当成命令执行），整条复制粘贴即可：
 
 ```bash
 # 固定隧道（默认）：只需 token 和隧道域名，UUID / WS 路径自动生成
-curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
-TUNNEL_TOKEN='你的隧道token' TUNNEL_HOST='你的隧道域名' \
-bash /tmp/vmess8443-install.sh
+curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && TUNNEL_TOKEN='你的隧道token' TUNNEL_HOST='你的隧道域名' bash /tmp/vmess8443-install.sh
 
 # 随机隧道（免 token）
-curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && \
-TUNNEL_MODE=quick bash /tmp/vmess8443-install.sh
+curl -fsSL https://raw.githubusercontent.com/hahafeng9/vmess8443/main/install.sh -o /tmp/vmess8443-install.sh && TUNNEL_MODE=quick bash /tmp/vmess8443-install.sh
 ```
+
+参数值首尾混入的空白（复制粘贴常见）会被自动去掉，不用刻意检查。
 
 UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmess8443/params.env`，
 重跑脚本自动复用（链接不变）。部署完链接直接打印在最后，也存在
 `/root/vmess8443-link.txt`。想用指定的 UUID/路径才需要加 `VMESS_UUID='...' WS_PATH='/vmess-xxx'`。
 
 `TUNNEL_HOST` 是固定隧道的域名（就是你建隧道时 Public Hostname 里的那个完整域名，
-如 `vmess251.ccc.tech`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
-链接的 Host/SNI。不传的话默认用 `vmess251.ccc.tech`。
+如 `vmess251.fengco.tech`），**必须和 Cloudflare 面板里配置的一致**——它会写进 VMess
+链接的 Host/SNI。不传的话默认用 `vmess251.fengco.tech`。
 
 参数（都可省略）：
 
@@ -42,7 +42,7 @@ UUID 和 WS_PATH **不用填**：省略时自动随机生成，存进 `/etc/vmes
 | `VMESS_UUID` | 节点 UUID。没给随机生成。 |
 | `WS_PATH` | WebSocket 路径。没给随机生成。 |
 | `LOCAL_PORT` | 本机监听端口，默认 `18001`（只绑 127.0.0.1）。 |
-| `TUNNEL_HOST` | 固定隧道的隧道域名，默认 `vmess251.ccc.tech`（仅 fixed）。 |
+| `TUNNEL_HOST` | 固定隧道的隧道域名，默认 `vmess251.fengco.tech`（仅 fixed）。 |
 | `EDGE_ADDR` / `EDGE_PORT` | 固定隧道客户端连接地址/端口，默认 `cf.877774.xyz` / `8443`（仅 fixed）。 |
 
 UUID、路径、隧道模式会存到 `/etc/vmess8443/params.env`，重跑脚本自动复用；随机隧道的
@@ -68,7 +68,7 @@ WS_PATH 字符集、端口范围等），不合法直接报错退出，避免特
 ## 前置条件（隧道侧，脚本之外）
 
 - fixed：固定隧道需先在 Cloudflare 建好（远程管理型），且 ingress 指向
-  `http://127.0.0.1:18001`、DNS 有对应 CNAME。本仓库配套的隧道：`vmess251.ccc.tech`。
+  `http://127.0.0.1:18001`、DNS 有对应 CNAME。本仓库配套的隧道：`vmess251.fengco.tech`。
 - quick：无需任何 Cloudflare 侧配置，但出口要能连上 Cloudflare 边缘。
 
 ## 卸载
